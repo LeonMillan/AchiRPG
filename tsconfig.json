@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "baseUrl": "src",
+        "lib": ["ES5", "ES6", "DOM"],
+        "strictNullChecks": true,
+        "esModuleInterop": true,
+        "target": "ES5"
+    }
+}

@@ -1,0 +1,10 @@
+{
+  "comments": false,
+  "compact": false,
+  "presets": [
+    ["@babel/preset-typescript"],
+    ["@babel/preset-env", {
+      "targets": "Chrome 65"
+    }]
+  ]
+}
