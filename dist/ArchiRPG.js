@@ -29,7 +29,6 @@
  * @command locationCheck
  * @text Location check
  * @desc Unlocks a location, sending the containing item to its owner.
- * The fetched data is saved into ArchiRPG.knownLocations[locationId].
  *
  * @arg locationIdOrName
  * @text Location ID or Name
@@ -93,6 +92,11 @@
  * @default 0
  * 
  * 
+ * @command autopatchShop
+ * @text Autopatch Shop 
+ * @desc Patches a shop processing command, changing the available goods.
+ *
+ * 
  * @help
  * Note: When used in RPG Maker MV, plugin commands are prefixed with "ArchiRPG."
  * E.g., "ArchiRPG.startGame", "ArchiRPG.locationCheck My_Location", etc.
@@ -107,45 +111,6 @@
  */
 (function (global, archipelago_js) {
     'use strict';
-
-    let Goal = function (Goal) {
-      Goal[Goal["DefeatEnemy"] = 0] = "DefeatEnemy";
-      Goal[Goal["DefeatTroop"] = 1] = "DefeatTroop";
-      Goal[Goal["ReachMap"] = 2] = "ReachMap";
-      return Goal;
-    }({});
-    let InitialParty = function (InitialParty) {
-      InitialParty[InitialParty["Vanilla"] = 0] = "Vanilla";
-      return InitialParty;
-    }({});
-    let SaveAccess = function (SaveAccess) {
-      SaveAccess[SaveAccess["Normal"] = 0] = "Normal";
-      SaveAccess[SaveAccess["AlwaysEnabled"] = 1] = "AlwaysEnabled";
-      SaveAccess[SaveAccess["AlwaysDisabled"] = 2] = "AlwaysDisabled";
-      return SaveAccess;
-    }({});
-    let Notifications = function (Notifications) {
-      Notifications[Notifications["None"] = 0] = "None";
-      Notifications[Notifications["Toast"] = 1] = "Toast";
-      return Notifications;
-    }({});
-    let NotificationsPosition = function (NotificationsPosition) {
-      NotificationsPosition[NotificationsPosition["TopLeft"] = 0] = "TopLeft";
-      NotificationsPosition[NotificationsPosition["TopRight"] = 1] = "TopRight";
-      NotificationsPosition[NotificationsPosition["BottomLeft"] = 2] = "BottomLeft";
-      NotificationsPosition[NotificationsPosition["BottomRight"] = 3] = "BottomRight";
-      return NotificationsPosition;
-    }({});
-
-    const DEFAULT_DATA = {
-      goal: Goal.DefeatEnemy,
-      goalTroop: 0,
-      goalMap: 0,
-      initialParty: InitialParty.Vanilla,
-      saveAccess: SaveAccess.Normal,
-      notifications: Notifications.None,
-      notificationsPosition: NotificationsPosition.BottomLeft
-    };
 
     const PLUGIN_NAME = 'ArchiRPG';
     const LOG_PREFIX = `[${PLUGIN_NAME}]`;
@@ -170,8 +135,15 @@
         __Game_Interpreter__pluginCommand.call(this, command, args);
       };
     }
-    function makeHash(...numbers) {
-      return numbers.map(n => n.toString(36).padStart(3, '0')).join('');
+    function parseDictString(str) {
+      const dict = {};
+      let match;
+      const regexp = /(\w+)\=(?:\"(.*)\"|([\S]*))\s*/g;
+      while ((match = regexp.exec(str)) !== null) {
+        const [_, key, val1, val2] = match;
+        dict[key] = val1 || val2;
+      }
+      return dict;
     }
 
     async function connect(player, hostname, port, password) {
@@ -207,7 +179,10 @@
       });
       ArchiRPG.client.addListener(archipelago_js.SERVER_PACKET_TYPE.LOCATION_INFO, packet => {
         packet.locations.forEach(item => {
-          ArchiRPG.knownLocations[item.location] = item;
+          ArchiRPG.scoutedItems[item.location] = {
+            ...item,
+            target: item.player
+          };
         });
       });
     });
@@ -215,35 +190,54 @@
       ArchiRPG.client.disconnect();
     });
 
+    function getGameOption(key, defaultValue) {
+      return ArchiRPG.options[key] || defaultValue;
+    }
     function startGame() {
+      if (!ArchiRPG.dataPackage) {
+        Logger.warn("Game started without data package, Archipelago may not work correctly");
+      }
       ArchiRPG.client.updateStatus(archipelago_js.CLIENT_STATUS.PLAYING);
       ArchiRPG.client.send({
         cmd: "Sync"
       });
     }
     function getLocationId(location) {
+      if (!ArchiRPG.dataPackage) return 0;
       const locationId = typeof location === 'string' ? ArchiRPG.dataPackage.location_name_to_id[location.replace(/_/g, ' ')] : location;
       return locationId;
+    }
+    function getScoutedItem(location) {
+      const locationId = getLocationId(location);
+      return ArchiRPG.scoutedItems[locationId];
+    }
+    function getScoutedItemDetails(location) {
+      const scoutedItem = ArchiRPG.API.getScoutedItem(location);
+      if (!scoutedItem) return ArchiRPG.unknownItemDetails;
+      return {
+        name: ArchiRPG.client.items.name(scoutedItem.target, scoutedItem.item),
+        playerName: ArchiRPG.client.players.alias(scoutedItem.target),
+        isOwnItem: scoutedItem.target === ArchiRPG.slot
+      };
+    }
+    function isLocationChecked(location) {
+      const locationId = getLocationId(location);
+      return ArchiRPG.client.locations.checked.includes(locationId);
     }
     function locationScout(location) {
       const locationId = getLocationId(location);
       ArchiRPG.client.locations.scout(archipelago_js.CREATE_AS_HINT_MODE.NO_HINT, locationId);
     }
-    function locationCheck(location) {
+    function locationCheck(location, hideNotification) {
       const locationId = getLocationId(location);
       ArchiRPG.client.locations.check(locationId);
-    }
-    function goalCheck(goal, preventCompletion) {
-      const data = $gameSystem.archipelagoData;
-      data.goalChecks[goal] = true;
-      if (!preventCompletion) {
-        const allChecks = [data.goalChecks.troop || !ArchiRPG.options.goalTroop, data.goalChecks.map || !ArchiRPG.options.goalMap];
-        const allComplete = allChecks.every(check => check);
-        if (allComplete) {
-          completeGame();
-        }
+      if (hideNotification) return;
+      const item = ArchiRPG.API.getScoutedItem(locationId);
+      if (item) {
+        ArchiRPG.API.showUnlockedItems([item]);
       }
     }
+    function goalCheck(goal, preventCompletion) {}
     function completeGame() {
       ArchiRPG.client.updateStatus(archipelago_js.CLIENT_STATUS.GOAL);
       ArchiRPG.client.locations.autoRelease();
@@ -255,8 +249,12 @@
     var API = /*#__PURE__*/Object.freeze({
         __proto__: null,
         completeGame: completeGame,
+        getGameOption: getGameOption,
         getLocationId: getLocationId,
+        getScoutedItem: getScoutedItem,
+        getScoutedItemDetails: getScoutedItemDetails,
         goalCheck: goalCheck,
+        isLocationChecked: isLocationChecked,
         locationCheck: locationCheck,
         locationScout: locationScout,
         showCustomMessage: showCustomMessage,
@@ -278,10 +276,17 @@
       };
     };
 
-    const {
-      Game_Party,
-      Game_System
-    } = window;
+    const __Game_Temp__initialize = Game_Temp.prototype.initialize;
+    Game_Temp.prototype.initialize = function () {
+      __Game_Temp__initialize.call(this);
+      this.archiRPG = {
+        shop: {
+          overrideList: [],
+          revealArchipelagoItems: false
+        }
+      };
+    };
+
     const __DataManager__setupNewGame = DataManager.setupNewGame;
     DataManager.setupNewGame = function () {
       __DataManager__setupNewGame.call(this);
@@ -292,54 +297,169 @@
       __Scene_Title__start.call(this);
       ArchiRPG.client.updateStatus(archipelago_js.CLIENT_STATUS.READY);
     };
-    const __Game_System__isSaveEnabled = Game_System.prototype.isSaveEnabled;
-    Game_System.prototype.isSaveEnabled = function () {
-      if (ArchiRPG.options.saveAccess === SaveAccess.AlwaysEnabled) return true;
-      if (ArchiRPG.options.saveAccess === SaveAccess.AlwaysDisabled) return false;
-      return __Game_System__isSaveEnabled.call(this);
-    };
-    const __Game_Party__setupStartingMembers = Game_Party.prototype.setupStartingMembers;
-    Game_Party.prototype.setupStartingMembers = function () {
-      if (ArchiRPG.options.initialParty === InitialParty.Vanilla) {
-        return __Game_Party__setupStartingMembers.call(this);
-      }
-      this._actors = [ArchiRPG.options.initialParty];
-    };
     const __Game_Interpreter__updateWaitMode = Game_Interpreter.prototype.updateWaitMode;
     Game_Interpreter.prototype.updateWaitMode = function () {
-      let waiting = __Game_Interpreter__updateWaitMode.call(this);
+      let waiting = false;
       if (this._waitMode === 'archi_check') {
-        const checkedLocation = ArchiRPG.knownLocations[this._archi_checkLocation];
+        const checkedLocation = ArchiRPG.API.getScoutedItem(this._archi_checkLocation);
         if (checkedLocation) {
-          showUnlockedItems([checkedLocation]);
+          ArchiRPG.API.showUnlockedItems([checkedLocation]);
         } else {
           waiting = true;
         }
       }
-      if (!waiting) {
-        this._waitMode = '';
-      }
-      return waiting;
+      if (waiting) return true;
+      return __Game_Interpreter__updateWaitMode.call(this);
     };
+    function requestScoutForCommand(commandName, args) {
+      if (commandName === makeCommandNameMV('autopatchCheck')) {
+        const [location] = args;
+        ArchiRPG.API.locationScout(location);
+      }
+      if (commandName === makeCommandNameMV('locationCheck')) {
+        const [location] = args;
+        ArchiRPG.API.locationScout(location);
+      }
+      if (commandName === makeCommandNameMV('locationScout')) {
+        const [location] = args;
+        ArchiRPG.API.locationScout(location);
+      }
+    }
     if (Game_Interpreter.requestImagesByPluginCommand) {
       const __Game_Interpreter__requestImagesByPluginCommand = Game_Interpreter.requestImagesByPluginCommand;
       Game_Interpreter.requestImagesByPluginCommand = function (commandName, args) {
-        if (commandName === makeCommandNameMV('autopatchCheck')) {
-          const [location] = args;
-          locationScout(location);
-        }
-        if (commandName === makeCommandNameMV('locationCheck')) {
-          const [location] = args;
-          locationScout(location);
-        }
-        if (commandName === makeCommandNameMV('locationScout')) {
-          const [location] = args;
-          locationScout(location);
-        }
+        requestScoutForCommand(commandName, args);
         __Game_Interpreter__requestImagesByPluginCommand.call(this, commandName, args);
       };
-    } else {}
+    } else if (Game_Interpreter.requestImages) {
+      const __Game_Interpreter__requestImages = Game_Interpreter.requestImages;
+      Game_Interpreter.requestImages = function (list, commonList) {
+        __Game_Interpreter__requestImages.call(this, list, commonList);
+        if (!list || list.length === 0) return;
+        for (let i = 0; i < list.length; i++) {
+          const command = list[i];
+          if (command.code !== 356) continue;
+          const args = command.parameters[0].split(" ");
+          const commandName = args.shift();
+          if (commandName) requestScoutForCommand(commandName, args);
+        }
+      };
+    }
+    const __Scene_Shop__create = Scene_Shop.prototype.create;
+    Scene_Shop.prototype.create = function () {
+      const {
+        overrideList
+      } = $gameTemp.archiRPG.shop;
+      overrideList.forEach(override => {
+        if (override.location) {
+          const id = ArchiRPG.API.getLocationId(override.location);
+          ArchiRPG.API.locationScout(id);
+        }
+      });
+      return __Scene_Shop__create.call(this);
+    };
+    const __Scene_Shop__isReady = Scene_Shop.prototype.isReady;
+    Scene_Shop.prototype.isReady = function () {
+      const {
+        overrideList
+      } = $gameTemp.archiRPG.shop;
+      const missingLocation = overrideList.some(override => {
+        if (override.location) {
+          const hasScoutedData = !!ArchiRPG.API.getScoutedItem(override.location);
+          if (!hasScoutedData) {
+            return true;
+          }
+        }
+        return false;
+      });
+      if (missingLocation) return false;
+      return __Scene_Shop__isReady.call(this);
+    };
+    Window_ShopBuy.prototype.makeItemList = function () {
+      const goodsToItem = this.goodsToItem || function (goods) {
+        switch (goods[0]) {
+          case 0:
+            return $dataItems[goods[1]];
+          case 1:
+            return $dataWeapons[goods[1]];
+          case 2:
+            return $dataArmors[goods[1]];
+          default:
+            return null;
+        }
+      };
+      this._data = [];
+      this._price = [];
+      const {
+        overrideList,
+        revealArchipelagoItems
+      } = $gameTemp.archiRPG.shop;
+      const goodsCount = Math.max(this._shopGoods.length, overrideList.length);
+      for (let i = 0; i < goodsCount; i++) {
+        const goods = this._shopGoods[i];
+        const override = overrideList[i];
+        const item = goods && goodsToItem(goods);
+        const itemPrice = item ? item.price : 0;
+        const price = override.price || (goods[2] === 0 ? itemPrice : goods[3]);
+        this._price.push(price);
+        if (override.location) {
+          const id = ArchiRPG.API.getLocationId(override.location);
+          const data = {
+            isArchipelago: true,
+            name: ArchiRPG.unknownItemDetails.name,
+            description: "????????????",
+            id
+          };
+          if (revealArchipelagoItems) {
+            const details = ArchiRPG.API.getScoutedItemDetails(id);
+            data.name = details.name;
+            data.description = details.isOwnItem ? "An Archipelago item for yourself" : "An Archipelago item for \\c[4]" + details.playerName;
+          }
+          this._data.push(data);
+        } else {
+          this._data.push(item);
+        }
+      }
+    };
+    const __Window_ShopBuy__isEnabled = Window_ShopBuy.prototype.isEnabled;
+    Window_ShopBuy.prototype.isEnabled = function (item) {
+      if (item && item.isArchipelago) {
+        return this.price(item) <= this._money && !ArchiRPG.API.isLocationChecked(item.id);
+      }
+      return __Window_ShopBuy__isEnabled.call(this, item);
+    };
+    const __Window_ShopBuy__price = Window_ShopBuy.prototype.price;
+    Window_ShopBuy.prototype.price = function (item) {
+      if (item && item.isArchipelago && ArchiRPG.API.isLocationChecked(item.id)) {
+        return "-----";
+      }
+      return __Window_ShopBuy__price.call(this, item);
+    };
+    const __Scene_Shop__onBuyOk = Scene_Shop.prototype.onBuyOk;
+    Scene_Shop.prototype.onBuyOk = function () {
+      const boughtItem = this._buyWindow.item();
+      if (boughtItem.isArchipelago) {
+        ArchiRPG.API.locationCheck(boughtItem.id);
+        $gameParty.loseGold(this.buyingPrice());
+        this._buyWindow.activate();
+        this._goldWindow.refresh();
+        this._statusWindow.refresh();
+        this._buyWindow.refresh();
+        SoundManager.playShop();
+        return;
+      }
+      return __Scene_Shop__onBuyOk.call(this);
+    };
+    const __Window_ShopStatus__drawPossession = Window_ShopStatus.prototype.drawPossession;
+    Window_ShopStatus.prototype.drawPossession = function (x, y) {
+      if (this._item.isArchipelago) {
+        return;
+      }
+      return __Window_ShopStatus__drawPossession.call(this, x, y);
+    };
 
+    const AUTOPATCH_CHECK_SUPPORTED_CODES = [125, 126, 127, 128, 129];
+    const AUTOPATCH_CHECK_SKIP_CODES = [101, 401, ...AUTOPATCH_CHECK_SUPPORTED_CODES];
     makePluginCommand('startGame', () => {
       ArchiRPG.API.startGame();
     });
@@ -357,38 +477,48 @@
     makePluginCommand('completeGame', () => {
       ArchiRPG.API.completeGame();
     });
-    makePluginCommand('quickCheck', () => {
-      const eventId = $gameMap._interpreter.eventId();
-      const event = $gameMap.event(eventId);
-      const mapId = $gameMap.mapId();
-      const eventPageId = event._pageIndex;
-      const mapName = $dataMapInfos[mapId];
-      const hash = makeHash(mapId, eventId, eventPageId);
-      const locationName = `${mapName} (${hash})`;
-      ArchiRPG.API.locationCheck(locationName);
-    });
     makePluginCommand('showCustomMessage', message => {
       ArchiRPG.API.showCustomMessage(message);
     });
-    const AUTOPATCH_SUPPORTED_CODES = [125, 126, 127, 128, 129];
-    const AUTOPATCH_SKIP_CODES = [101, 401, ...AUTOPATCH_SUPPORTED_CODES];
     makePluginCommand('autopatchCheck', function (location) {
       const locationId = ArchiRPG.API.getLocationId(location);
       const nextCmd = this.nextEventCode();
-      if (!AUTOPATCH_SUPPORTED_CODES.includes(nextCmd)) {
+      if (!AUTOPATCH_CHECK_SUPPORTED_CODES.includes(nextCmd)) {
         throw new Error(`Can't auto patch command code ${nextCmd}`);
       }
-      while (AUTOPATCH_SKIP_CODES.includes(this.nextEventCode())) {
+      while (AUTOPATCH_CHECK_SKIP_CODES.includes(this.nextEventCode())) {
         this._index++;
       }
       ArchiRPG.API.locationCheck(locationId);
-      if (ArchiRPG.knownLocations[locationId]) {
-        ArchiRPG.API.showUnlockedItems([ArchiRPG.knownLocations[locationId]]);
+      const locationInfo = ArchiRPG.API.getScoutedItem(locationId);
+      if (locationInfo) {
+        ArchiRPG.API.showUnlockedItems([locationInfo]);
       } else {
         ArchiRPG.API.locationScout(locationId);
         this._archi_checkLocation = locationId;
         this.setWaitMode('archi_check');
       }
+    });
+    makePluginCommand('autopatchShop', function (...tags) {
+      const revealArchipelagoItems = tags.includes("revealArchipelagoItems");
+      const nextCmd = this.nextEventCode();
+      if (nextCmd !== 302) {
+        throw new Error(`Can't auto patch command code ${nextCmd}`);
+      }
+      const overrideList = [];
+      for (let i = this._index + 1; this._list[i]; i++) {
+        const command = this._list[i];
+        if ([302, 605].includes(command.code)) continue;
+        if (![108, 408].includes(command.code)) break;
+        const parsedComment = parseDictString(command.parameters[0]);
+        overrideList.push({
+          name: parsedComment["name"],
+          location: parsedComment["location"],
+          price: parsedComment["price"] ? Number(parsedComment["price"]) : undefined
+        });
+      }
+      $gameTemp.archiRPG.shop.overrideList = overrideList;
+      $gameTemp.archiRPG.shop.revealArchipelagoItems = revealArchipelagoItems;
     });
 
     const ArchiRPG$1 = window.ArchiRPG || {
@@ -403,9 +533,14 @@
         itemsHandling: archipelago_js.ITEMS_HANDLING_FLAGS.REMOTE_ALL
       },
       client: new archipelago_js.Client(),
-      knownLocations: {},
+      scoutedItems: {},
+      unknownItemDetails: {
+        name: "??????????",
+        playerName: "someone",
+        isOwnItem: false
+      },
       checkedLocations: [],
-      options: DEFAULT_DATA,
+      options: {},
       slot: -1,
       team: -1
     };

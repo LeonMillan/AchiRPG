@@ -1,16 +1,47 @@
 import { CLIENT_STATUS, CREATE_AS_HINT_MODE, NetworkItem } from "archipelago.js";
-import { GoalCheck } from "../Types";
+import { GoalCheck, IItemDetails, IScoutedItem } from "../Types";
+import { ISlotData } from "../SlotData";
+import { Logger } from "../Utils";
+
+export function getGameOption<K extends keyof ISlotData>(key: K, defaultValue: ISlotData[K]): ISlotData[K] {
+    return ArchiRPG.options[key] || defaultValue;
+}
 
 export function startGame() {
+    if (!ArchiRPG.dataPackage) {
+        Logger.warn("Game started without data package, Archipelago may not work correctly");
+    }
     ArchiRPG.client.updateStatus(CLIENT_STATUS.PLAYING);
     ArchiRPG.client.send({ cmd: "Sync" });
 }
 
-export function getLocationId(location: string | number) {
+export function getLocationId(location: string | number): number {
+    if (!ArchiRPG.dataPackage) return 0;
+
     const locationId = typeof location === 'string'
         ? ArchiRPG.dataPackage.location_name_to_id[location.replace(/_/g, ' ')]
         : location;
     return locationId;
+}
+
+export function getScoutedItem(location: string | number): IScoutedItem | undefined {
+    const locationId = getLocationId(location);
+    return ArchiRPG.scoutedItems[locationId];
+}
+
+export function getScoutedItemDetails(location: string | number): IItemDetails {
+    const scoutedItem = ArchiRPG.API.getScoutedItem(location);
+    if (!scoutedItem) return ArchiRPG.unknownItemDetails;
+    return {
+        name: ArchiRPG.client.items.name(scoutedItem.target, scoutedItem.item),
+        playerName: ArchiRPG.client.players.alias(scoutedItem.target),
+        isOwnItem: scoutedItem.target === ArchiRPG.slot,
+    };
+}
+
+export function isLocationChecked(location: string | number): boolean {
+    const locationId = getLocationId(location);
+    return ArchiRPG.client.locations.checked.includes(locationId);
 }
 
 export function locationScout(location: string | number) {
@@ -18,24 +49,19 @@ export function locationScout(location: string | number) {
     ArchiRPG.client.locations.scout(CREATE_AS_HINT_MODE.NO_HINT, locationId);
 }
 
-export function locationCheck(location: string | number) {
+export function locationCheck(location: string | number, hideNotification?: boolean) {
     const locationId = getLocationId(location);
     ArchiRPG.client.locations.check(locationId);
+    
+    if (hideNotification) return;
+    const item = ArchiRPG.API.getScoutedItem(locationId);
+    if (item) {
+        ArchiRPG.API.showUnlockedItems([item]);
+    }
 }
 
 export function goalCheck(goal: GoalCheck, preventCompletion?: boolean) {
-    const data = $gameSystem.archipelagoData;
-    data.goalChecks[goal] = true;
-    if (!preventCompletion) {
-        const allChecks = [
-            data.goalChecks.troop || !ArchiRPG.options.goalTroop,
-            data.goalChecks.map || !ArchiRPG.options.goalMap,
-        ];
-        const allComplete = allChecks.every((check) => check);
-        if (allComplete) {
-            completeGame();
-        }
-    }
+    // Placeholder
 }
 
 export function completeGame() {

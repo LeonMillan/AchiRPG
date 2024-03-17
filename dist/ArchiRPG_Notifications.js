@@ -8,7 +8,7 @@
  * @orderAfter ArchiRPG
  */
 
-(function (global, MV, archipelago_js) {
+(function (global, archipelago_js, MV) {
   'use strict';
 
   function _interopNamespaceDefault(e) {
@@ -2722,22 +2722,6 @@
     throw new TypeError("Cannot set property of null or undefined.");
   }
 
-  let Goal = function (Goal) {
-    Goal[Goal["DefeatEnemy"] = 0] = "DefeatEnemy";
-    Goal[Goal["DefeatTroop"] = 1] = "DefeatTroop";
-    Goal[Goal["ReachMap"] = 2] = "ReachMap";
-    return Goal;
-  }({});
-  let InitialParty = function (InitialParty) {
-    InitialParty[InitialParty["Vanilla"] = 0] = "Vanilla";
-    return InitialParty;
-  }({});
-  let SaveAccess = function (SaveAccess) {
-    SaveAccess[SaveAccess["Normal"] = 0] = "Normal";
-    SaveAccess[SaveAccess["AlwaysEnabled"] = 1] = "AlwaysEnabled";
-    SaveAccess[SaveAccess["AlwaysDisabled"] = 2] = "AlwaysDisabled";
-    return SaveAccess;
-  }({});
   let Notifications = function (Notifications) {
     Notifications[Notifications["None"] = 0] = "None";
     Notifications[Notifications["Toast"] = 1] = "Toast";
@@ -2833,8 +2817,8 @@
     SceneManager
   } = window;
   const COLOR_INDEX = {
-    PlayerName: 6,
-    ItemName: 4,
+    PlayerName: 4,
+    ItemName: 6,
     TrapName: 10
   };
   const ICON_INDEX = {
@@ -2868,10 +2852,13 @@
   }
   function makeMessage(message, icon) {
     if (!icon) return message;
-    const leftAlign = ArchiRPG.options.notificationsPosition % 2 === 0;
+    const position = ArchiRPG.API.getGameOption('notificationsPosition', 0);
+    const leftAlign = position % 2 === 0;
     return leftAlign ? `\\I[${icon}] ${message}` : `${message} \\I[${icon}]`;
   }
   function handleReceivedItem(item) {
+    const isOwnItem = item.player === ArchiRPG.slot;
+    if (isOwnItem) return;
     const playerName = ArchiRPG.client.players.alias(item.player);
     const itemName = ArchiRPG.client.items.name(ArchiRPG.slot, item.item);
     const itemIcon = getItemIcon(item);
@@ -2902,7 +2889,8 @@
     showNotification(message);
   }
   function showNotification(message) {
-    switch (ArchiRPG.options.notifications) {
+    const type = ArchiRPG.API.getGameOption('notifications', Notifications.Toast);
+    switch (type) {
       case Notifications.Toast:
         showNotificationToast(message);
         break;
@@ -2912,10 +2900,11 @@
   }
   function showNotificationToast(message) {
     if (!SceneManager._scene) return;
+    const position = ArchiRPG.API.getGameOption('notificationsPosition', 0);
     const scene = SceneManager._scene;
     let toast = scene._archiToastWindow || new Window_APToast();
     toast.showMessage(message);
-    toast.setToastPosition(ArchiRPG.options.notificationsPosition);
+    toast.setToastPosition(position);
     if (!scene._archiToastWindow) {
       scene._archiToastWindow = toast;
       scene.addChildAt(toast, scene.children.length);
@@ -2931,4 +2920,4 @@
     showNotification(message);
   };
 
-})(null, window, ArchiLib);
+})(null, ArchiLib, window);

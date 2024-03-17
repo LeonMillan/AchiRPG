@@ -1,7 +1,7 @@
 import '@leonmillan/rpgmaker-ts/lib/global';
-import { Window_APToast } from './Window_APToast';
-import { Notifications } from "../Types";
 import { ChatJSONPacket, ITEM_FLAGS, NetworkItem, SERVER_PACKET_TYPE } from 'archipelago.js';
+import { Window_APToast } from './Window_APToast';
+import { Notifications } from "./types";
 
 const { SceneManager } = window;
 
@@ -18,8 +18,8 @@ declare module '@leonmillan/rpgmaker-ts/lib/mz' {
 }
 
 const COLOR_INDEX = {
-    PlayerName: 6,
-    ItemName: 4,
+    PlayerName: 4,
+    ItemName: 6,
     TrapName: 10,
 };
 
@@ -62,13 +62,16 @@ function getItemIcon(item: NetworkItem) {
 
 function makeMessage(message: string, icon?: number) {
     if (!icon) return message;
-    const leftAlign = (ArchiRPG.options.notificationsPosition % 2) === 0;
+    const position = ArchiRPG.API.getGameOption('notificationsPosition', 0);
+    const leftAlign = (position % 2) === 0;
     return leftAlign
         ? `\\I[${icon}] ${message}`
         : `${message} \\I[${icon}]`;
 }
 
 function handleReceivedItem(item: NetworkItem) {
+    const isOwnItem = item.player === ArchiRPG.slot;
+    if (isOwnItem) return;
     const playerName = ArchiRPG.client.players.alias(item.player);
     const itemName = ArchiRPG.client.items.name(ArchiRPG.slot, item.item);
     const itemIcon = getItemIcon(item);
@@ -113,7 +116,8 @@ function handleChatMessage(packet: ChatJSONPacket) {
 }
 
 function showNotification(message: string) {
-    switch (ArchiRPG.options.notifications) {
+    const type = ArchiRPG.API.getGameOption('notifications', Notifications.Toast);
+    switch (type) {
         case Notifications.Toast:
             showNotificationToast(message);
             break;
@@ -125,10 +129,11 @@ function showNotification(message: string) {
 
 function showNotificationToast(message: string) {
     if (!SceneManager._scene) return;
+    const position = ArchiRPG.API.getGameOption('notificationsPosition', 0);
     const scene = SceneManager._scene;
     let toast = scene._archiToastWindow || new Window_APToast();
     toast.showMessage(message);
-    toast.setToastPosition(ArchiRPG.options.notificationsPosition);
+    toast.setToastPosition(position);
     if (!scene._archiToastWindow) {
         scene._archiToastWindow = toast;
         scene.addChildAt(toast, scene.children.length);

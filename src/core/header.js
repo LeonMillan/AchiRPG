@@ -29,7 +29,6 @@
  * @command locationCheck
  * @text Location check
  * @desc Unlocks a location, sending the containing item to its owner.
- * The fetched data is saved into ArchiRPG.knownLocations[locationId].
  *
  * @arg locationIdOrName
  * @text Location ID or Name
@@ -92,6 +91,11 @@
  * @type string
  * @default 0
  * 
+ * 
+ * @command autopatchShop
+ * @text Autopatch Shop 
+ * @desc Patches a shop processing command, changing the available goods.
+ *
  * 
  * @help
  * Note: When used in RPG Maker MV, plugin commands are prefixed with "ArchiRPG."

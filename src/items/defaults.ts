@@ -9,8 +9,8 @@ export const DEFAULT_PRESETS: ItemRangePreset[] = [
     [2001,          4000,       "item"],
     [4001,          6000,       "weapon"],
     [6001,          8000,       "armor"],
-    [8001,          8500,       "gold",         -50],
-    [8501,          9000,       "gold",         +50],
+    [8001,          8500,       "gold",         +50],
+    [8501,          9000,       "gold",         -50],
     [100001,        200000,     "classSkill",   100],
 ];
 

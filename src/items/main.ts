@@ -71,10 +71,14 @@ window.addEventListener('load', () => {
         if (!$gameSystem) return; // Game not started
 
         const { nextItemIndex } = $gameSystem.archipelagoData;
-        const newItems = packet.items.slice(nextItemIndex);
+        const itemsReindexed = packet.items.map((item, index) => ({
+            ...item,
+            index: packet.index + index,
+        }));
+        const newItems = itemsReindexed.filter((item) => item.index >= nextItemIndex);
         newItems.map(handleItem);
         
         ArchiRPG.API.showReceivedItems(newItems);
-        $gameSystem.archipelagoData.nextItemIndex = packet.items.length;
+        $gameSystem.archipelagoData.nextItemIndex = packet.index + packet.items.length;
     });
 });

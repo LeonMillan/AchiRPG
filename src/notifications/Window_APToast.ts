@@ -1,5 +1,5 @@
 import * as MV from "@leonmillan/rpgmaker-ts/lib/mv";
-import { NotificationsPosition } from "../Types";
+import { NotificationsPosition } from "./types";
 
 const { Graphics } = window;
 

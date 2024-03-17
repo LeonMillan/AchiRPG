@@ -1,3 +1,28 @@
+import { NetworkItem } from "archipelago.js";
+
+export interface IScoutedItem extends NetworkItem {
+    target: NetworkItem["player"];
+}
+
+export interface IItemDetails {
+    name: string;
+    playerName: string;
+    isOwnItem: boolean;
+}
+
+export interface IShopOverrideItem {
+    location?: string;
+    price?: number;
+    name?: string;
+}
+
+export interface ITempData {
+    shop: {
+        overrideList: IShopOverrideItem[];
+        revealArchipelagoItems: boolean;
+    };
+}
+
 export enum Goal {
     DefeatEnemy,
     DefeatTroop,
@@ -5,25 +30,3 @@ export enum Goal {
 }
 
 export type GoalCheck = "troop" | "map";
-
-export enum InitialParty {
-    Vanilla = 0,
-}
-
-export enum SaveAccess {
-    Normal,
-    AlwaysEnabled,
-    AlwaysDisabled,
-}
-
-export enum Notifications {
-    None,
-    Toast,
-}
-
-export enum NotificationsPosition {
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight,
-}

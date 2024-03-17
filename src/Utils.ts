@@ -32,6 +32,17 @@ export function makePluginCommand<F extends (...args: string[]) => void>(name: s
     };
 }
 
-export function makeHash(...numbers: number[]): string {
-    return numbers.map((n) => n.toString(36).padStart(3, '0')).join('');
+/**
+ * Reads a string containing a dictionary, with entries in
+ * "key=value" format and separated by spaces.
+ */
+export function parseDictString(str: string): Record<string, string> {
+    const dict = {};
+    let match: RegExpExecArray | null;
+    const regexp = /(\w+)\=(?:\"(.*)\"|([\S]*))\s*/g;
+    while ((match = regexp.exec(str)) !== null) {
+        const [_, key, val1, val2] = match;
+        dict[key] = val1 || val2;
+    }
+    return dict;
 }

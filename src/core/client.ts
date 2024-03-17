@@ -1,4 +1,4 @@
-import { ITEMS_HANDLING_FLAGS, SERVER_PACKET_TYPE } from 'archipelago.js';
+import { SERVER_PACKET_TYPE } from 'archipelago.js';
 import { Logger } from "../Utils";
 import { ISlotData } from '../SlotData';
 
@@ -39,7 +39,10 @@ window.addEventListener('load', () => {
 
     ArchiRPG.client.addListener(SERVER_PACKET_TYPE.LOCATION_INFO, (packet) => {
         packet.locations.forEach((item) => {
-            ArchiRPG.knownLocations[item.location] = item;
+            ArchiRPG.scoutedItems[item.location] = {
+                ...item,
+                target: item.player,
+            };
         });
     });
 });

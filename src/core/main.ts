@@ -2,11 +2,13 @@ import '@leonmillan/rpgmaker-ts/lib/global';
 import { Client, ITEMS_HANDLING_FLAGS } from 'archipelago.js';
 
 import { IArchiRPG } from '../Context';
-import { DEFAULT_DATA } from '../SlotData';
 import { connect } from './client';
 import * as API from './api';
 import './overrides';
 import './commands';
+
+declare const Decrypter: any;
+Decrypter._ignoreList.push("img/archirpg/Icons.png");
 
 const ArchiRPG: IArchiRPG = window.ArchiRPG || {
     API: {
@@ -20,9 +22,14 @@ const ArchiRPG: IArchiRPG = window.ArchiRPG || {
         itemsHandling: ITEMS_HANDLING_FLAGS.REMOTE_ALL,
     },
     client: new Client(),
-    knownLocations: {},
+    scoutedItems: {},
+    unknownItemDetails: {
+        name: "??????????",
+        playerName: "someone",
+        isOwnItem: false,
+    },
     checkedLocations: [],
-    options: DEFAULT_DATA,
+    options: {},
     slot: -1,
     team: -1,
 };

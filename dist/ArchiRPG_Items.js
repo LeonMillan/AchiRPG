@@ -34,13 +34,20 @@
         __Game_Interpreter__pluginCommand.call(this, command, args);
       };
     }
-    function makeHash(...numbers) {
-      return numbers.map(n => n.toString(36).padStart(3, '0')).join('');
+    function parseDictString(str) {
+      const dict = {};
+      let match;
+      const regexp = /(\w+)\=(?:\"(.*)\"|([\S]*))\s*/g;
+      while ((match = regexp.exec(str)) !== null) {
+        const [_, key, val1, val2] = match;
+        dict[key] = val1 || val2;
+      }
+      return dict;
     }
 
     const REGISTER_DEFAULT_PRESETS = true;
     const REGISTER_DEFAULT_HANDLERS = true;
-    const DEFAULT_PRESETS = [[1001, 2000, "actor"], [2001, 4000, "item"], [4001, 6000, "weapon"], [6001, 8000, "armor"], [8001, 8500, "gold", -50], [8501, 9000, "gold", +50], [100001, 200000, "classSkill", 100]];
+    const DEFAULT_PRESETS = [[1001, 2000, "actor"], [2001, 4000, "item"], [4001, 6000, "weapon"], [6001, 8000, "armor"], [8001, 8500, "gold", +50], [8501, 9000, "gold", -50], [100001, 200000, "classSkill", 100]];
     const DEFAULT_HANDLERS = {
       actor(itemId) {
         $gameParty.addActor(itemId + 1);
@@ -140,10 +147,14 @@
         const {
           nextItemIndex
         } = $gameSystem.archipelagoData;
-        const newItems = packet.items.slice(nextItemIndex);
+        const itemsReindexed = packet.items.map((item, index) => ({
+          ...item,
+          index: packet.index + index
+        }));
+        const newItems = itemsReindexed.filter(item => item.index >= nextItemIndex);
         newItems.map(handleItem);
         ArchiRPG.API.showReceivedItems(newItems);
-        $gameSystem.archipelagoData.nextItemIndex = packet.items.length;
+        $gameSystem.archipelagoData.nextItemIndex = packet.index + packet.items.length;
       });
     });
 
