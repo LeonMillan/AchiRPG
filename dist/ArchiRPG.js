@@ -176,7 +176,7 @@
           port: port,
           password,
           items_handling: ArchiRPG.world.itemsHandling,
-          tags: ["DeathLink"]
+          tags: ArchiRPG.API.getClientTags()
         });
         ArchiRPG.slot = response.slot;
         ArchiRPG.team = response.team;

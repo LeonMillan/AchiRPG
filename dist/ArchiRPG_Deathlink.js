@@ -190,7 +190,7 @@
 
     function makeTroopName() {
       const enemyNames = $gameTroop.enemyNames();
-      if (enemyNames.length === 0) return "mysterious forces";
+      if (!$gameParty.inBattle() || enemyNames.length === 0) return "mysterious forces";
       let strongestEnemy = enemyNames[0];
       let strongestEnemyHp = 0;
       this.members().forEach(function (enemy) {
@@ -254,6 +254,24 @@
       const actorIndex = this.index();
       const cause = makeDeathCause(actorIndex);
       ArchiRPG.API.triggerDeathlink(cause);
+    };
+    const __Scene_Base__checkGameover = Scene_Base.prototype.checkGameover;
+    Scene_Base.prototype.checkGameover = function () {
+      if ($gameParty.isAllDead()) {
+        if (Params.DEATHLINK_MODE === 'party' && Params.DEATHLINK_TRIGGER === 'auto') {
+          const cause = makeDeathCause();
+          ArchiRPG.API.triggerDeathlink(cause);
+        }
+      }
+      __Scene_Base__checkGameover.call(this);
+    };
+    const __Game_Interpreter__command353 = Game_Interpreter.prototype.command353;
+    Game_Interpreter.prototype.command353 = function () {
+      if (Params.DEATHLINK_MODE === 'party' && Params.DEATHLINK_TRIGGER === 'auto') {
+        const cause = makeDeathCause();
+        ArchiRPG.API.triggerDeathlink(cause);
+      }
+      return __Game_Interpreter__command353.call(this);
     };
 
     const __getClientTags = ArchiRPG.API.getClientTags;
