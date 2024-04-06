@@ -1,7 +1,27 @@
-import { CLIENT_STATUS, CREATE_AS_HINT_MODE, NetworkItem } from "archipelago.js";
+import { CLIENT_STATUS, CONNECTION_STATUS, CREATE_AS_HINT_MODE, NetworkItem } from "archipelago.js";
 import { GoalCheck, IItemDetails, IScoutedItem } from "../Types";
 import { ISlotData } from "../SlotData";
 import { Logger } from "../Utils";
+
+export function isArchipelagoMode(): boolean {
+    return true;
+}
+
+export function isConnected(): boolean {
+    return ArchiRPG.client.status === CONNECTION_STATUS.CONNECTED;
+}
+
+export function isDeathlinkParticipant(): boolean {
+    return ArchiRPG.tags.includes("DeathLink");
+}
+
+export function getClientTags(): string[] {
+    return [];
+}
+
+export function getRoomIdentifier(): string {
+    return ArchiRPG.client.data.seed;
+}
 
 export function getGameOption<K extends keyof ISlotData>(key: K, defaultValue: ISlotData[K]): ISlotData[K] {
     return ArchiRPG.options[key] || defaultValue;
@@ -62,6 +82,19 @@ export function locationCheck(location: string | number, hideNotification?: bool
 
 export function goalCheck(goal: GoalCheck, preventCompletion?: boolean) {
     // Placeholder
+}
+
+export function triggerDeathlink(cause: string = "") {
+    const source = ArchiRPG.client.players.alias(ArchiRPG.slot);
+    ArchiRPG.client.send({
+        cmd: "Bounce",
+        tags: ["DeathLink"],
+        data: {
+            cause,
+            source,
+            time: Date.now(),
+        },
+    });
 }
 
 export function completeGame() {

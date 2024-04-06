@@ -1,0 +1,33 @@
+const { PluginManager } = window;
+
+const PLUGIN_NAME = "ArchiRPG_Deathlink";
+const PLUGIN_PARAMS = PluginManager.parameters(PLUGIN_NAME);
+
+function getParam<T = string>(key: string, defValue: T): T {
+    if (!(key in PLUGIN_PARAMS)) return defValue;
+    return PLUGIN_PARAMS[key] as T;
+}
+
+function getParamNum(key: string, defValue: number): number {
+    if (!(key in PLUGIN_PARAMS)) return defValue;
+    const parsedVal = Number(PLUGIN_PARAMS[key]);
+    return Number.isNaN(parsedVal) ? defValue : parsedVal;
+}
+
+function getParamBool(key: string, defValue: boolean): boolean {
+    if (!(key in PLUGIN_PARAMS)) return defValue;
+    return (PLUGIN_PARAMS[key] as string).toLowerCase() === 'true';
+}
+
+function getParamJson<T>(key: string, defValue: T): T {
+    if (!(key in PLUGIN_PARAMS)) return defValue;
+    return JSON.parse(PLUGIN_PARAMS[key] as string);
+}
+
+export const Params = {
+    DEATHLINK_MODE: getParam<'none' | 'actor' | 'party' | 'custom'>("DeathlinkMode", 'party'),
+    DEATHLINK_TRIGGER: getParam<'auto' | 'manual'>("DeathlinkTrigger", 'auto'),
+    DEATHLINK_ACTOR_PRIORITY: getParam<'first' | 'random' | 'random_battle'>("DeathlinkActorPriority", 'first'),
+    DEATHLINK_EVENT_ID: getParamNum("DeathlinkEventID", 0),
+    DEATHLINK_CAUSE_EVAL: getParam("DeathlinkCauseEval", ""),
+};

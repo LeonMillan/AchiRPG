@@ -67,6 +67,15 @@ export default [
   },
   {
     ...preset,
+    input: "src/deathlink/main.ts",
+    output: {
+      ...preset.output,
+      file: "dist/ArchiRPG_Deathlink.js",
+      banner: async () => fs.readFile("./src/deathlink/header.js", { encoding: "utf8" }),
+    },
+  },
+  {
+    ...preset,
     input: "src/patcher/main.ts",
     output: {
       ...preset.output,

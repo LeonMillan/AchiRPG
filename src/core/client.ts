@@ -11,6 +11,7 @@ export async function connect(player: string, hostname: string, port: number, pa
             port: port,
             password,
             items_handling: ArchiRPG.world.itemsHandling,
+            tags: ArchiRPG.API.getClientTags(),
         });
         ArchiRPG.slot = response.slot;
         ArchiRPG.team = response.team;

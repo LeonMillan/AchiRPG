@@ -13,9 +13,15 @@ export interface IArchiRPGAPI {
     locationScout(location: string | number): void;
     locationCheck(location: string | number): void;
     goalCheck(goal: GoalCheck, preventCompletion?: boolean): void;
+    triggerDeathlink(cause?: string): void;
     showReceivedItems(items: NetworkItem[]): void;
     showUnlockedItems(items: NetworkItem[]): void;
     showCustomMessage(message: string): void;
+    isArchipelagoMode(): boolean;
+    isConnected(): boolean;
+    isDeathlinkParticipant(): boolean;
+    getClientTags(): string[];
+    getRoomIdentifier(): string;
     getGameOption<K extends keyof ISlotData>(key: K): ISlotData[K] | undefined;
     getGameOption<K extends keyof ISlotData>(key: K, defaultValue: ISlotData[K]): ISlotData[K];
 }
@@ -36,6 +42,7 @@ export interface IArchiRPG {
     checkedLocations: number[];
     slot: number;
     team: number;
+    tags: string[];
 }
 
 declare global {

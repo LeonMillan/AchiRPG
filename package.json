@@ -9,7 +9,7 @@
     "plugin"
   ],
   "scripts": {
-    "build": "rollup -c",
+    "build": "rollup -c --filterLogs \"!code:EVAL\"",
     "build:lib": "cd Archipelago.JS && npx webpack --config ./webpack.config.js --config ../ArchiLib.webpack.js --merge"
   },
   "devDependencies": {

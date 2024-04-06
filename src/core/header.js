@@ -6,7 +6,7 @@
  * @plugindesc Archipelago support for RPG Maker MV and MZ
  * @author LeonMillan
  * @orderAfter ArchiLib
- *
+ * 
  * 
  * @command startGame
  * @text Start Game
@@ -93,9 +93,30 @@
  * 
  * 
  * @command autopatchShop
- * @text Autopatch Shop 
+ * @text Autopatch Shop
  * @desc Patches a shop processing command, changing the available goods.
  *
+ * 
+ * @param _World
+ * @text AP World Settings
+ * 
+ * @param GameName
+ * @text Game Name
+ * @parent _World
+ * @type text
+ * 
+ * @param BaseID
+ * @text Base ID
+ * @parent _World
+ * @type number
+ * 
+ * @param EnableSaveBinding
+ * @text Enable Save Binding
+ * @desc When enabled, player can only load files
+ * created for the current Archipelago room
+ * @type boolean
+ * @default true
+ * 
  * 
  * @help
  * Note: When used in RPG Maker MV, plugin commands are prefixed with "ArchiRPG."

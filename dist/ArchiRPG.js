@@ -6,7 +6,7 @@
  * @plugindesc Archipelago support for RPG Maker MV and MZ
  * @author LeonMillan
  * @orderAfter ArchiLib
- *
+ * 
  * 
  * @command startGame
  * @text Start Game
@@ -93,9 +93,30 @@
  * 
  * 
  * @command autopatchShop
- * @text Autopatch Shop 
+ * @text Autopatch Shop
  * @desc Patches a shop processing command, changing the available goods.
  *
+ * 
+ * @param _World
+ * @text AP World Settings
+ * 
+ * @param GameName
+ * @text Game Name
+ * @parent _World
+ * @type text
+ * 
+ * @param BaseID
+ * @text Base ID
+ * @parent _World
+ * @type number
+ * 
+ * @param EnableSaveBinding
+ * @text Enable Save Binding
+ * @desc When enabled, player can only load files
+ * created for the current Archipelago room
+ * @type boolean
+ * @default true
+ * 
  * 
  * @help
  * Note: When used in RPG Maker MV, plugin commands are prefixed with "ArchiRPG."
@@ -112,19 +133,19 @@
 (function (global, archipelago_js) {
     'use strict';
 
-    const PLUGIN_NAME = 'ArchiRPG';
-    const LOG_PREFIX = `[${PLUGIN_NAME}]`;
+    const PLUGIN_NAME$1 = 'ArchiRPG';
+    const LOG_PREFIX = `[${PLUGIN_NAME$1}]`;
     const Logger = {
       log: console.log.bind(null, LOG_PREFIX),
       warn: console.warn.bind(null, LOG_PREFIX),
       error: console.error.bind(null, LOG_PREFIX)
     };
     function makeCommandNameMV(name) {
-      return `${PLUGIN_NAME}.${name}`;
+      return `${PLUGIN_NAME$1}.${name}`;
     }
     function makePluginCommand(name, func) {
       if ('registerCommand' in window.PluginManager) {
-        window.PluginManager.registerCommand(PLUGIN_NAME, name, func);
+        window.PluginManager.registerCommand(PLUGIN_NAME$1, name, func);
         return;
       }
       const __Game_Interpreter__pluginCommand = window.Game_Interpreter.prototype.pluginCommand;
@@ -154,7 +175,8 @@
           hostname,
           port: port,
           password,
-          items_handling: ArchiRPG.world.itemsHandling
+          items_handling: ArchiRPG.world.itemsHandling,
+          tags: ["DeathLink"]
         });
         ArchiRPG.slot = response.slot;
         ArchiRPG.team = response.team;
@@ -190,6 +212,49 @@
       ArchiRPG.client.disconnect();
     });
 
+    const {
+      PluginManager
+    } = window;
+    const PLUGIN_NAME = "ArchiRPG";
+    const PLUGIN_PARAMS = PluginManager.parameters(PLUGIN_NAME);
+    function getParam(key, defValue) {
+      if (!(key in PLUGIN_PARAMS)) return defValue;
+      return PLUGIN_PARAMS[key];
+    }
+    function getParamNum(key, defValue) {
+      if (!(key in PLUGIN_PARAMS)) return defValue;
+      const parsedVal = Number(PLUGIN_PARAMS[key]);
+      return Number.isNaN(parsedVal) ? defValue : parsedVal;
+    }
+    function getParamBool(key, defValue) {
+      if (!(key in PLUGIN_PARAMS)) return defValue;
+      return PLUGIN_PARAMS[key].toLowerCase() === 'true';
+    }
+    function getParamJson(key, defValue) {
+      if (!(key in PLUGIN_PARAMS)) return defValue;
+      return JSON.parse(PLUGIN_PARAMS[key]);
+    }
+    const Params = {
+      GAME_NAME: getParam("GameName", "RPG Maker"),
+      ITEM_BASE_ID: getParam("ItemBaseID", 774000000000),
+      ENABLE_SAVE_BINDING: getParamBool("EnableSaveBinding", true)
+    };
+
+    function isArchipelagoMode() {
+      return true;
+    }
+    function isConnected() {
+      return ArchiRPG.client.status === archipelago_js.CONNECTION_STATUS.CONNECTED;
+    }
+    function isDeathlinkParticipant() {
+      return ArchiRPG.tags.includes("DeathLink");
+    }
+    function getClientTags() {
+      return [];
+    }
+    function getRoomIdentifier() {
+      return ArchiRPG.client.data.seed;
+    }
     function getGameOption(key, defaultValue) {
       return ArchiRPG.options[key] || defaultValue;
     }
@@ -238,6 +303,18 @@
       }
     }
     function goalCheck(goal, preventCompletion) {}
+    function triggerDeathlink(cause = "") {
+      const source = ArchiRPG.client.players.alias(ArchiRPG.slot);
+      ArchiRPG.client.send({
+        cmd: "Bounce",
+        tags: ["DeathLink"],
+        data: {
+          cause,
+          source,
+          time: Date.now()
+        }
+      });
+    }
     function completeGame() {
       ArchiRPG.client.updateStatus(archipelago_js.CLIENT_STATUS.GOAL);
       ArchiRPG.client.locations.autoRelease();
@@ -249,18 +326,24 @@
     var API = /*#__PURE__*/Object.freeze({
         __proto__: null,
         completeGame: completeGame,
+        getClientTags: getClientTags,
         getGameOption: getGameOption,
         getLocationId: getLocationId,
+        getRoomIdentifier: getRoomIdentifier,
         getScoutedItem: getScoutedItem,
         getScoutedItemDetails: getScoutedItemDetails,
         goalCheck: goalCheck,
+        isArchipelagoMode: isArchipelagoMode,
+        isConnected: isConnected,
+        isDeathlinkParticipant: isDeathlinkParticipant,
         isLocationChecked: isLocationChecked,
         locationCheck: locationCheck,
         locationScout: locationScout,
         showCustomMessage: showCustomMessage,
         showReceivedItems: showReceivedItems,
         showUnlockedItems: showUnlockedItems,
-        startGame: startGame
+        startGame: startGame,
+        triggerDeathlink: triggerDeathlink
     });
 
     const __Game_System__initialize = window.Game_System.prototype.initialize;
@@ -287,16 +370,6 @@
       };
     };
 
-    const __DataManager__setupNewGame = DataManager.setupNewGame;
-    DataManager.setupNewGame = function () {
-      __DataManager__setupNewGame.call(this);
-      ArchiRPG.API.startGame();
-    };
-    const __Scene_Title__start = Scene_Title.start;
-    Scene_Title.start = function () {
-      __Scene_Title__start.call(this);
-      ArchiRPG.client.updateStatus(archipelago_js.CLIENT_STATUS.READY);
-    };
     const __Game_Interpreter__updateWaitMode = Game_Interpreter.prototype.updateWaitMode;
     Game_Interpreter.prototype.updateWaitMode = function () {
       let waiting = false;
@@ -311,6 +384,7 @@
       if (waiting) return true;
       return __Game_Interpreter__updateWaitMode.call(this);
     };
+
     function requestScoutForCommand(commandName, args) {
       if (commandName === makeCommandNameMV('autopatchCheck')) {
         const [location] = args;
@@ -345,6 +419,7 @@
         }
       };
     }
+
     const __Scene_Shop__create = Scene_Shop.prototype.create;
     Scene_Shop.prototype.create = function () {
       const {
@@ -458,6 +533,17 @@
       return __Window_ShopStatus__drawPossession.call(this, x, y);
     };
 
+    const __DataManager__setupNewGame = DataManager.setupNewGame;
+    DataManager.setupNewGame = function () {
+      __DataManager__setupNewGame.call(this);
+      ArchiRPG.API.startGame();
+    };
+    const __Scene_Title__start = Scene_Title.start;
+    Scene_Title.start = function () {
+      __Scene_Title__start.call(this);
+      ArchiRPG.client.updateStatus(archipelago_js.CLIENT_STATUS.READY);
+    };
+
     const AUTOPATCH_CHECK_SUPPORTED_CODES = [125, 126, 127, 128, 129];
     const AUTOPATCH_CHECK_SKIP_CODES = [101, 401, ...AUTOPATCH_CHECK_SUPPORTED_CODES];
     makePluginCommand('startGame', () => {
@@ -527,9 +613,9 @@
         ...API
       },
       world: {
-        name: 'RPG Maker',
+        name: Params.GAME_NAME,
         type: window.Utils.RPGMAKER_NAME,
-        baseId: 774000000000,
+        baseId: Params.ITEM_BASE_ID,
         itemsHandling: archipelago_js.ITEMS_HANDLING_FLAGS.REMOTE_ALL
       },
       client: new archipelago_js.Client(),
