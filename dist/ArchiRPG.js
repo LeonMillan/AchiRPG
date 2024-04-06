@@ -236,7 +236,7 @@
     }
     const Params = {
       GAME_NAME: getParam("GameName", "RPG Maker"),
-      ITEM_BASE_ID: getParam("ItemBaseID", 774000000000),
+      BASE_ID: getParam("BaseID", 774000000000),
       ENABLE_SAVE_BINDING: getParamBool("EnableSaveBinding", true)
     };
 
@@ -247,7 +247,7 @@
       return ArchiRPG.client.status === archipelago_js.CONNECTION_STATUS.CONNECTED;
     }
     function isDeathlinkParticipant() {
-      return ArchiRPG.tags.includes("DeathLink");
+      return false;
     }
     function getClientTags() {
       return [];
@@ -419,6 +419,25 @@
         }
       };
     }
+
+    const __DataManager__makeSavefileInfo = DataManager.makeSavefileInfo;
+    DataManager.makeSavefileInfo = function () {
+      const info = __DataManager__makeSavefileInfo.call(this);
+      info.apSeed = ArchiRPG.API.getRoomIdentifier();
+      return info;
+    };
+    const __DataManager__isThisGameFile = DataManager.isThisGameFile;
+    DataManager.isThisGameFile = function (savefileId) {
+      const result = __DataManager__isThisGameFile.call(this);
+      if (Params.ENABLE_SAVE_BINDING && ArchiRPG.API.isArchipelagoMode()) {
+        if (!ArchiRPG.API.isConnected()) return false;
+        const globalInfo = this.loadGlobalInfo();
+        if (!globalInfo) return false;
+        if (!globalInfo[savefileId]) return false;
+        return globalInfo[savefileId].apSeed === ArchiRPG.API.getRoomIdentifier();
+      }
+      return result;
+    };
 
     const __Scene_Shop__create = Scene_Shop.prototype.create;
     Scene_Shop.prototype.create = function () {
@@ -615,7 +634,7 @@
       world: {
         name: Params.GAME_NAME,
         type: window.Utils.RPGMAKER_NAME,
-        baseId: Params.ITEM_BASE_ID,
+        baseId: Params.BASE_ID,
         itemsHandling: archipelago_js.ITEMS_HANDLING_FLAGS.REMOTE_ALL
       },
       client: new archipelago_js.Client(),

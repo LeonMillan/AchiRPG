@@ -137,6 +137,31 @@ function showNotificationToast(message: string) {
     if (!scene._archiToastWindow) {
         scene._archiToastWindow = toast;
         scene.addChildAt(toast, scene.children.length);
+    } else if (scene.children.indexOf(toast) < scene.children.length - 1) {
+        scene.removeChild(toast);
+        scene.addChildAt(toast, scene.children.length);
+    }
+}
+
+const __SceneManager__changeScene = SceneManager.changeScene;
+SceneManager.changeScene = function() {
+    const prevScene = this._scene;
+    __SceneManager__changeScene.call(this);
+    if (prevScene && this._scene !== prevScene && prevScene._archiToastWindow) {
+        const toast = prevScene._archiToastWindow;
+        this._scene._archiToastWindow = toast;
+        this._scene.addChildAt(toast, this._scene.children.length);
+    }
+}
+
+const __SceneManager__onSceneStart = SceneManager.onSceneStart;
+SceneManager.onSceneStart = function() {
+    const prevScene = this._scene;
+    __SceneManager__onSceneStart.call(this);
+    if (prevScene && this._scene !== prevScene && prevScene._archiToastWindow) {
+        const toast = prevScene._archiToastWindow;
+        this._scene._archiToastWindow = toast;
+        this._scene.addChildAt(toast, this._scene.children.length);
     }
 }
 

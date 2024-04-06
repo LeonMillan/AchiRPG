@@ -12,7 +12,7 @@ export function isConnected(): boolean {
 }
 
 export function isDeathlinkParticipant(): boolean {
-    return ArchiRPG.tags.includes("DeathLink");
+    return false;
 }
 
 export function getClientTags(): string[] {

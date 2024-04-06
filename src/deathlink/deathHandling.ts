@@ -5,6 +5,11 @@ const { SceneManager } = window;
 
 const deathLinkQueue: DeathLinkData[] = [];
 
+function showDeathNotification(data: DeathLinkData) {
+    const message = data.cause || (data.source + " died.");
+    ArchiRPG.API.showCustomMessage("\\I[1] " + message);
+}
+
 function pickActorToKill() {
     if (Params.DEATHLINK_ACTOR_PRIORITY === 'first') {
         return $gameParty.aliveMembers()[0];
@@ -38,7 +43,10 @@ function handleDefaultDeathLink() {
 
     for (const actor of actorsToKill) {
         actor.die();
+        actor.refresh();
     }
+
+    showDeathNotification(nextDeathLink);
 }
 
 function handleCustomDeathLink() {
@@ -48,6 +56,7 @@ function handleCustomDeathLink() {
     if (!nextDeathLink) return;
 
     $gameTemp.reserveCommonEvent(Params.DEATHLINK_EVENT_ID);
+    showDeathNotification(nextDeathLink);
 }
 
 
@@ -75,7 +84,10 @@ const __Scene_Map__updateScene = Scene_Map.prototype.updateScene;
 Scene_Map.prototype.updateScene = function() {
     __Scene_Map__updateScene.call(this);
     if (!SceneManager.isSceneChanging()) {
+        handleDefaultDeathLink();
         handleCustomDeathLink();
+        $gamePlayer.refresh();
+        $gameMap.requestRefresh();
     }
 }
 
@@ -86,6 +98,8 @@ export function onDeathEvent(data: DeathLinkData) {
 // TODO: remove these
 declare const $gameTemp: any;
 declare const $gameParty: any;
+declare const $gamePlayer: any;
+declare const $gameMap: any;
 declare const BattleManager: any;
 declare const Game_Troop: any;
 declare const Scene_Map: any;

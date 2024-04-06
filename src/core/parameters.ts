@@ -26,6 +26,6 @@ function getParamJson<T>(key: string, defValue: T): T {
 
 export const Params = {
     GAME_NAME: getParam("GameName", "RPG Maker"),
-    ITEM_BASE_ID: getParam("ItemBaseID", 774_000_000_000),
+    BASE_ID: getParam("BaseID", 774_000_000_000),
     ENABLE_SAVE_BINDING: getParamBool("EnableSaveBinding", true),
 };

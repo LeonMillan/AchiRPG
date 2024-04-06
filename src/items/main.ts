@@ -82,3 +82,6 @@ window.addEventListener('load', () => {
         $gameSystem.archipelagoData.nextItemIndex = packet.index + packet.items.length;
     });
 });
+
+// TODO: remove these
+declare const Scene_Title: any;

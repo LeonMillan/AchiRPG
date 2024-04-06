@@ -5,6 +5,7 @@ import './augment/Game_Temp';
 
 import './override/checkWait';
 import './override/prefetchScout';
+import './override/saveBinding';
 import './override/shop';
 
 const __DataManager__setupNewGame = DataManager.setupNewGame;

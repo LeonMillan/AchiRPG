@@ -93,6 +93,10 @@
       SceneManager
     } = window;
     const deathLinkQueue = [];
+    function showDeathNotification(data) {
+      const message = data.cause || data.source + " died.";
+      ArchiRPG.API.showCustomMessage("\\I[1] " + message);
+    }
     function pickActorToKill() {
       if (Params.DEATHLINK_ACTOR_PRIORITY === 'first') {
         return $gameParty.aliveMembers()[0];
@@ -118,13 +122,16 @@
       const actorsToKill = Params.DEATHLINK_MODE === "party" ? $gameParty.members() : [pickActorToKill()];
       for (const actor of actorsToKill) {
         actor.die();
+        actor.refresh();
       }
+      showDeathNotification(nextDeathLink);
     }
     function handleCustomDeathLink() {
       if (Params.DEATHLINK_MODE !== "custom") return;
       const nextDeathLink = deathLinkQueue.shift();
       if (!nextDeathLink) return;
       $gameTemp.reserveCommonEvent(Params.DEATHLINK_EVENT_ID);
+      showDeathNotification(nextDeathLink);
     }
     const __BattleManager__startTurn = BattleManager.startTurn;
     BattleManager.startTurn = function () {
@@ -147,7 +154,10 @@
     Scene_Map.prototype.updateScene = function () {
       __Scene_Map__updateScene.call(this);
       if (!SceneManager.isSceneChanging()) {
+        handleDefaultDeathLink();
         handleCustomDeathLink();
+        $gamePlayer.refresh();
+        $gameMap.requestRefresh();
       }
     };
     function onDeathEvent(data) {
@@ -274,6 +284,11 @@
       return __Game_Interpreter__command353.call(this);
     };
 
+    var types = {};
+
+    ArchiRPG.API.isDeathlinkParticipant = function () {
+      return ArchiRPG.API.getGameOption('deathLink', 0) === 1;
+    };
     const __getClientTags = ArchiRPG.API.getClientTags;
     ArchiRPG.API.getClientTags = function () {
       const tags = __getClientTags();

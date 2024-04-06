@@ -16,7 +16,7 @@ const ArchiRPG: IArchiRPG = window.ArchiRPG || {
     world: {
         name: Params.GAME_NAME,
         type: window.Utils.RPGMAKER_NAME,
-        baseId: Params.ITEM_BASE_ID,
+        baseId: Params.BASE_ID,
         itemsHandling: ITEMS_HANDLING_FLAGS.REMOTE_ALL,
     },
     client: new Client(),
